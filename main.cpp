@@ -5,6 +5,8 @@
 #include <fstream>
 #include <thread>
 
+#define KEY_DOWN(VK_NONAME) ((GetAsyncKeyState(VK_NONAME) & 0x8000) ? 1:0)
+
 struct WindowInfo {
     int x, y, flag;
 } TargetWindowInfo[2], ScreenInfo;
@@ -193,8 +195,10 @@ void StepFunction() {
         if (TargetWindowShowFlag) {
             if (TargetWindowInfo[0].flag != -1 && (!MouseInTargetWindow || !MouseInShowSide)) { SetTargetWindowSide(0, TargetWindowInfo[0].flag); }
             if ((TargetWindowInfo[1].flag == 0 || TargetWindowInfo[1].flag == 1 || TargetWindowInfo[1].flag == 2) && TargetWindowInfo[0].flag == -1) {
-                SetTargetWindowSide(2, 0);
-                TargetWindowInfo[1].flag = -1;
+                while(!KEY_DOWN(MOUSE_MOVED)) {
+                    SetTargetWindowSide(2, 0);
+                    TargetWindowInfo[1].flag = -1;
+                }
             }
         } else {
             MouseInShowSide = TargetWindowInfo[0].flag == 2 && MousePoint.x >= TargetWindowInfoData.left && MousePoint.x <= TargetWindowInfoData.right &&
@@ -205,8 +209,6 @@ void StepFunction() {
         }
         if (TargetWindowShowFlag && TargetWindowInfo[0].y <= (int) ((double) ScreenInfo.y * 0.8))
             TargetWindowInfo[1].y = TargetWindowInfo[0].y;
-        if (TargetWindowShowFlag && TargetWindowInfo[0].flag == -1 && TargetWindowInfo[0].y != TargetWindowInfo[1].y)
-            SetTargetWindowSide(2, 0);
         if (PrintTime > 13) {
             system("cls");
             PrintTime = 0;
