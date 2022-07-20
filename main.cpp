@@ -4,8 +4,13 @@
 #include <string>
 #include <fstream>
 #include <thread>
+#include <shellapi.h>
 
 #define KEY_DOWN(VK_NONAME) ((GetAsyncKeyState(VK_NONAME) & 0x8000) ? 1:0)
+#define BarReset 12
+#define BarAutoRun 13
+#define BarAbout 14
+#define BarExit 15
 
 struct WindowInfo {
     int x, y, flag;
@@ -23,25 +28,31 @@ void GetConfigFile();
 
 void StepFunction();
 
+void TrayBar();
+
+void AutoRun(const std::string &RegName);
+
 HWND TargetWindowAddress;
-RECT TargetWindowInfoData, ScreenData;
+RECT ProgramWindowInfoData, TargetWindowInfoData, ScreenData;
 POINT MousePoint, MousePointBuffer;
 size_t PrintTime = 0, GetConfigFile_T = 0;
-bool TargetWindowShowFlag = true, MouseInTargetWindow = false, MouseInShowSide = false;
+bool TargetWindowShowFlag = true, MouseInTargetWindow = false, MouseInShowSide = false, ProgramWindowShow = false, ResetMode = false;
 std::string TargetClassNameData, TargetWindowNameData;
 int FindWindowMode;
 LPCSTR TargetClassName, TargetWindowName;
-std::thread StepFunction_P(StepFunction); //NOLINT
+std::thread StepFunction_thread(StepFunction), TrayBar_thread(TrayBar); //NOLINT
+LPCTSTR ClassName = TEXT("TargetWindowHider");
+LPCTSTR WindowName = TEXT("TargetWindowHider");
+HMENU hmenu;
 
 int main() {
-    system("chcp 65001");//ËÆæÁΩÆÁ®ãÂ∫èËØ≠Ë®Ä‰∏∫‰∏≠Êñá
     SetProgramWindowShow(0);
-    SetWindowText(GetConsoleWindow(), "WindowHider");
-    std::cout << "Á®ãÂ∫èÂºÄÂßãËøêË°å‚Ä¶‚Ä¶" << std::endl;
+    SetWindowText(GetConsoleWindow(), "TargetWindowHider");
+    std::cout << "≥Ã–Úø™ º‘À––°≠°≠" << std::endl;
     GetConfigFile();
     if (!::SystemParametersInfoA(SPI_GETWORKAREA, 0, &ScreenData, 0)) {
         SetProgramWindowShow(1);
-        std::cout << "Êó†Ê≥ïËé∑ÂèñÂ±èÂπï‰ø°ÊÅØÔºåËØ∑ËÅîÁ≥ªÂºÄÂèëËÄÖ„ÄÇError_code: " << GetLastError() << std::endl << "Á®ãÂ∫èÂ∞ÜÂú®5sÂêéËá™Âä®ÂÖ≥Èó≠";
+        std::cout << "Œﬁ∑®ªÒ»°∆¡ƒª–≈œ¢£¨«Î¡™œµø™∑¢’ﬂ°£Error_code: " << GetLastError() << std::endl << "≥Ã–ÚΩ´‘⁄5s∫Û◊‘∂Øπÿ±’";
         Sleep(5000);
         exit((int) GetLastError());
     }
@@ -52,8 +63,124 @@ int main() {
     if (TargetWindowInfo[0].y <= (int) ((double) ScreenInfo.y * 0.8))
         TargetWindowInfo[1].y = TargetWindowInfo[0].y;
     TargetWindowInfo[1].flag = TargetWindowInfo[0].flag;
-    StepFunction_P.join();
+    TrayBar_thread.detach();
+    StepFunction_thread.join();
     return 0;
+}
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    NOTIFYICONDATA Tray;
+    UINT RegTaskBar;
+    int BarExitCode;
+    RegTaskBar = RegisterWindowMessage(TEXT("TaskbarCreated"));
+    switch (message) {
+        case WM_CREATE:
+            Tray.cbSize = sizeof(Tray);
+            Tray.hWnd = hwnd;
+            Tray.uID = 0;
+            Tray.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+            Tray.uCallbackMessage = WM_USER;
+            Tray.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
+            lstrcpy(Tray.szTip, ClassName);
+            Shell_NotifyIcon(NIM_ADD, &Tray);
+            hmenu = CreatePopupMenu();
+            ::AppendMenu(hmenu, MF_STRING, BarReset, "Reset TargetWindow|÷ÿ…Ëƒø±Í¥∞ø⁄");
+            ::AppendMenu(hmenu, MF_STRING, BarAutoRun, "Set AutoRun|…Ë÷√ø™ª˙◊‘∆Ù");
+            ::AppendMenu(hmenu, MF_STRING, BarAbout, "About|πÿ”⁄");
+            ::AppendMenu(hmenu, MF_STRING, BarExit, "Exit|ÕÀ≥ˆ");
+            break;
+        case WM_USER:
+            if (lParam == WM_LBUTTONDOWN) {
+                if (ProgramWindowShow) SetProgramWindowShow(0);
+                else SetProgramWindowShow(1);
+            }
+            if (lParam == WM_RBUTTONDOWN) {
+                GetCursorPos(&MousePoint);
+                ::SetForegroundWindow(hwnd);
+                BarExitCode = ::TrackPopupMenu(hmenu, TPM_RETURNCMD, MousePoint.x, MousePoint.y, 0, hwnd, nullptr);
+                if (BarExitCode == BarReset) {
+                    ResetMode = true;
+                    system("cls");
+                    PrintTime = 0;
+                    SetProgramWindowShow(1);
+                    std::cout << "’˝‘⁄πÿ±’Ω¯≥Ã°≠°≠" << std::endl << "º¥Ω´÷ÿ÷√°≠°≠" << std::endl;
+                    DeleteFile("config.json");
+                    GetConfigFile();
+                    ResetMode = false;
+                    SetProgramWindowShow(0);
+                }
+                if (BarExitCode == BarAutoRun)
+                    AutoRun("TargetWindowHider");
+                if (BarExitCode == BarAbout)
+                    MessageBox(hwnd, TEXT("TargetWindowHider V1.1.2\nAuthor: DoubleCat\nWebsite: blog.doublecat.cn"), ClassName, MB_OK);
+                if (BarExitCode == BarExit) exit(0);
+                if (BarExitCode == 0) PostMessage(hwnd, WM_LBUTTONDOWN, NULL, NULL);
+            }
+            break;
+        case WM_DESTROY:
+            Shell_NotifyIcon(NIM_DELETE, &Tray);
+            PostQuitMessage(0);
+            break;
+        default:
+            if (message == RegTaskBar)
+                SendMessage(hwnd, WM_CREATE, wParam, lParam);
+            break;
+    }
+    return DefWindowProc(hwnd, message, wParam, lParam);
+}
+
+char *StringToChar(const std::string &object) {
+    char *result = (char *) object.data();
+    return result;
+}
+
+void TrayBar() {
+    HWND hwnd;
+    MSG msg;
+    WNDCLASS wndclass;
+    HWND handle = FindWindow(nullptr, WindowName);
+    if (handle != nullptr) {
+        MessageBox(nullptr, TEXT("Application is already running"), ClassName, MB_ICONERROR);
+        exit(555);
+    }
+    wndclass.style = CS_HREDRAW | CS_VREDRAW;
+    wndclass.lpfnWndProc = WndProc;
+    wndclass.cbClsExtra = 0;
+    wndclass.cbWndExtra = 0;
+    wndclass.hInstance = nullptr;
+    wndclass.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
+    wndclass.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wndclass.hbrBackground = (HBRUSH) GetStockObject(WHITE_BRUSH);
+    wndclass.lpszMenuName = nullptr;
+    wndclass.lpszClassName = ClassName;
+
+    if (!RegisterClass(&wndclass)) {
+        MessageBox(nullptr, TEXT("This program requires Windows NT!"), ClassName, MB_ICONERROR);
+        exit(2008);
+    }
+    hwnd = CreateWindowEx(WS_EX_TOOLWINDOW,
+                          ClassName, WindowName,
+                          WS_POPUP,
+                          CW_USEDEFAULT,
+                          CW_USEDEFAULT,
+                          CW_USEDEFAULT,
+                          CW_USEDEFAULT,
+                          nullptr, nullptr, nullptr, nullptr);
+
+    ShowWindow(hwnd, 0);
+    UpdateWindow(hwnd);
+    while (GetMessage(&msg, nullptr, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
+
+void AutoRun(const std::string &RegName) { //admin
+    std::string temp = R"(REG ADD HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run /v )";
+    const std::string &autorunName = RegName;
+    std::string path = __argv[0];
+    std::string cmd = temp + autorunName + " /t REG_SZ /d " + path + " /f";
+    system(StringToChar(cmd));
 }
 
 void GetTargetWindowInfo() {
@@ -63,10 +190,16 @@ void GetTargetWindowInfo() {
         TargetWindowAddress = FindWindow(TargetClassName, nullptr);
     else
         TargetWindowAddress = FindWindow(TargetClassName, TargetWindowName);
+    if (::GetWindowRect(GetConsoleWindow(), &ProgramWindowInfoData))
+        if (ProgramWindowInfoData.left == -25600 || ProgramWindowInfoData.top == -25600) {
+            ::SetWindowPos(TargetWindowAddress, HWND_NOTOPMOST, 0, 0, ProgramWindowInfoData.right - ProgramWindowInfoData.left,
+                           ProgramWindowInfoData.bottom - ProgramWindowInfoData.top, SWP_SHOWWINDOW);
+            SetProgramWindowShow(0);
+        }
     if (TargetWindowAddress != nullptr) {
         if (::GetWindowRect(TargetWindowAddress, &TargetWindowInfoData) != 0) {
             if (TargetWindowInfoData.left == -26500 || TargetWindowInfoData.top == -25600) {
-                std::cout << "ÁõÆÊ†áÁ®ãÂ∫èÂ§Ñ‰∫éÊúÄÂ∞èÂåñÔºåËØ∑ÂèñÊ∂àÁõÆÊ†áÁ®ãÂ∫èÁöÑÊúÄÂ∞èÂåñÁä∂ÊÄÅ„ÄÇ" << std::endl;
+                std::cout << "ƒø±Í≥Ã–Ú¥¶”⁄◊Ó–°ªØ£¨«Î»°œ˚ƒø±Í≥Ã–Úµƒ◊Ó–°ªØ◊¥Ã¨°£" << std::endl;
                 PrintTime++;
             } else {
                 TargetWindowInfo[0].x = TargetWindowInfoData.right - TargetWindowInfoData.left;
@@ -95,11 +228,11 @@ void GetTargetWindowInfo() {
                 }
             }
         } else {
-            std::cout << "Êó†Ê≥ïËé∑ÂèñÁõÆÊ†áÁ®ãÂ∫è‰ø°ÊÅØÔºåËØ∑Ê£ÄÊü•ÊòØÂê¶ÁõÆÊ†áÁ®ãÂ∫èÊòØÂê¶ÊâìÂºÄÊàñÁ±ªÂêç„ÄÅÁ™óÂè£ÂêçÊúâËØØÔºå" << "Error_code: " << GetLastError() << "„ÄÇ" << std::endl;
+            std::cout << "Œﬁ∑®ªÒ»°ƒø±Í≥Ã–Ú–≈œ¢£¨«ÎºÏ≤È «∑Òƒø±Í≥Ã–Ú «∑Ò¥Úø™ªÚ¿‡√˚°¢¥∞ø⁄√˚”–ŒÛ£¨" << "Error_code: " << GetLastError() << "°£" << std::endl;
             PrintTime++;
         }
     } else {
-        std::cout << "Êó†Ê≥ïËé∑ÂèñÁõÆÊ†áÁ®ãÂ∫è‰ø°ÊÅØÔºåËØ∑Ê£ÄÊü•ÊòØÂê¶ÁõÆÊ†áÁ®ãÂ∫èÊòØÂê¶ÊâìÂºÄÊàñÁ±ªÂêç„ÄÅÁ™óÂè£ÂêçÊúâËØØÔºå" << "Error_code: " << GetLastError() << "„ÄÇ" << std::endl;
+        std::cout << "Œﬁ∑®ªÒ»°ƒø±Í≥Ã–Ú–≈œ¢£¨«ÎºÏ≤È «∑Òƒø±Í≥Ã–Ú «∑Ò¥Úø™ªÚ¿‡√˚°¢¥∞ø⁄√˚”–ŒÛ£¨" << "Error_code: " << GetLastError() << "°£" << std::endl;
         PrintTime++;
     }
     Sleep(10);
@@ -108,7 +241,7 @@ void GetTargetWindowInfo() {
 void GetMouseInfo() {
     if (GetCursorPos(&MousePoint) == 0) {
         SetProgramWindowShow(1);
-        std::cout << "Êó†Ê≥ïËé∑ÂèñÈº†Ê†á‰ø°ÊÅØÔºåËØ∑ËÅîÁ≥ªÂºÄÂèëËÄÖ„ÄÇError_code: " << GetLastError() << std::endl << "Á®ãÂ∫èÂ∞ÜÂú®5sÂêéËá™Âä®ÂÖ≥Èó≠";
+        std::cout << "Œﬁ∑®ªÒ»° Û±Í–≈œ¢£¨«Î¡™œµø™∑¢’ﬂ°£Error_code: " << GetLastError() << std::endl << "≥Ã–ÚΩ´‘⁄5s∫Û◊‘∂Øπÿ±’";
         Sleep(5000);
         exit(102);
     } else {
@@ -144,39 +277,46 @@ void SetTargetWindowSide(int mod, int point) {
 }
 
 void SetProgramWindowShow(int mod) {
-    if (mod == 0)
+    if (mod == 0) {
         ShowWindow(GetConsoleWindow(), SW_HIDE);
-    else if (mod == 1)
+        ProgramWindowShow = false;
+    } else if (mod == 1) {
         ShowWindow(GetConsoleWindow(), SW_SHOW);
+        ProgramWindowShow = true;
+    }
 }
 
-void GetConfigFile() { //NOLINT
-    std::fstream ConfigFile;
-    ConfigFile.open("config.json", std::ios::in);
-    if (!ConfigFile.is_open()) {
-        SetProgramWindowShow(1);
-        ConfigFile.open("config.json", std::ios::out);
-        std::cout << "Êú™ÊâæÂà∞config.jsonÊñá‰ª∂ÔºåÊ≠£Âú®ÂàõÂª∫‚Ä¶‚Ä¶" << std::endl << "ËØ∑ÂàÜ‰∏∫‰∏§Ë°åËæìÂÖ•ÁõÆÊ†áÁ®ãÂ∫èÁ±ªÂêç„ÄÅÁ™óÂè£ÂêçÔºåÊú™Áü•È°πËØ∑ËæìÂÖ•nullptrÔºå‰∏§ËÄÖËá≥Â∞ëÈúÄË¶ÅÂ°´ÂÜô‰∏ÄÈ°πÔºö"
-                  << std::endl;
-        std::cin >> TargetClassNameData >> TargetWindowNameData;
-        ConfigFile << TargetClassNameData << std::endl << TargetWindowNameData;
-    }
-    ConfigFile >> TargetClassNameData >> TargetWindowNameData;
-    if (TargetClassNameData.find("nullptr") != std::string::npos &&
-        TargetWindowNameData.find("nullptr") != std::string::npos) {
-        std::cout << "Á±ªÂêç„ÄÅÁ™óÂè£ÂêçÂùá‰∏∫nullptrÔºåËØ∑ÈáçÊñ∞ËæìÂÖ•„ÄÇ" << std::endl;
-        ConfigFile.close();
-        DeleteFile("config.json");
-        if (GetConfigFile_T < 4) {
-            GetConfigFile_T++;
-            GetConfigFile();
-        } else {
-            std::cout << "5Ê¨°‰∫ÜÂïä5Ê¨°‰Ω†Âπ≤ÂòõÂïäÔºÅÔºÅÔºÅ" << std::endl;
-            Sleep(5000);
-            exit(250);
+void GetConfigFile() {
+    bool GetConfigFileFlag = false;
+    while(!GetConfigFileFlag) {
+        std::fstream ConfigFile;
+        ConfigFile.open("config.json", std::ios::in);
+        if (!ConfigFile.is_open()) {
+            SetProgramWindowShow(1);
+            ConfigFile.open("config.json", std::ios::out);
+            std::cout << "Œ¥’“µΩconfig.jsonŒƒº˛£¨’˝‘⁄¥¥Ω®°≠°≠" << std::endl << "«Î∑÷Œ™¡Ω–– ‰»Îƒø±Í≥Ã–Ú¿‡√˚°¢¥∞ø⁄√˚£¨Œ¥÷™œÓ«Î ‰»Înullptr£¨¡Ω’ﬂ÷¡…Ÿ–Ë“™ÃÓ–¥“ªœÓ£∫"
+                      << std::endl;
+            std::cin >> TargetClassNameData >> TargetWindowNameData;
+            ConfigFile << TargetClassNameData << std::endl << TargetWindowNameData;
+        }
+        ConfigFile >> TargetClassNameData >> TargetWindowNameData;
+        if (TargetClassNameData.find("nullptr") != std::string::npos &&
+            TargetWindowNameData.find("nullptr") != std::string::npos) {
+            std::cout << "¿‡√˚°¢¥∞ø⁄√˚æ˘Œ™nullptr£¨«Î÷ÿ–¬ ‰»Î°£" << std::endl;
+            ConfigFile.close();
+            DeleteFile("config.json");
+            if (GetConfigFile_T < 4) {
+                GetConfigFile_T++;
+            } else {
+                std::cout << "5¥Œ¡À∞°5¥Œƒ„∏…¬Ô∞°£°£°£°" << std::endl;
+                Sleep(5000);
+                exit(250);
+            }
+        }else{
+            ConfigFile.close();
+            GetConfigFileFlag = true;
         }
     }
-    ConfigFile.close();
     TargetClassName = strdup(TargetClassNameData.c_str());
     TargetWindowName = strdup(TargetWindowNameData.c_str());
     if (TargetClassNameData.find("nullptr") != std::string::npos)
@@ -189,13 +329,14 @@ void GetConfigFile() { //NOLINT
 }
 
 void StepFunction() {
-    while (true) { //NOLINT
+    while (true) {
+        while (ResetMode) {}
         GetTargetWindowInfo();
         GetMouseInfo();
         if (TargetWindowShowFlag) {
             if (TargetWindowInfo[0].flag != -1 && (!MouseInTargetWindow || !MouseInShowSide)) { SetTargetWindowSide(0, TargetWindowInfo[0].flag); }
             if ((TargetWindowInfo[1].flag == 0 || TargetWindowInfo[1].flag == 1 || TargetWindowInfo[1].flag == 2) && TargetWindowInfo[0].flag == -1) {
-                while(!KEY_DOWN(MOUSE_MOVED)) {
+                while (!KEY_DOWN(MOUSE_MOVED)) {
                     SetTargetWindowSide(2, 0);
                     TargetWindowInfo[1].flag = -1;
                 }
