@@ -1,5 +1,8 @@
 # TargetWindowHider_v1.1.5
+## 这是一个让第三方软件实现类似于QQ的窗口停靠&隐藏效果小工具
+
 # 博客地址
+
 [**欢迎大家来看我的博客~**](https://blog.doublecat.cn/post/TargetWindowHider/)
 
 # 更新
