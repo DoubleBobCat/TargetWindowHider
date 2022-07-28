@@ -112,10 +112,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
                 if (BarExitCode == BarAutoRun)
                     AutoRun("TargetWindowHider");
                 if (BarExitCode == BarAbout)
-                    MessageBox(hwnd, TEXT("TargetWindowHider V1.1.2\nAuthor: DoubleCat\nWebsite: blog.doublecat.cn"), ClassName, MB_OK);
+                    MessageBox(hwnd, TEXT("TargetWindowHider V1.1.6\nAuthor: DoubleCat\nWebsite: blog.doublecat.cn"), ClassName, MB_OK);
                 if (BarExitCode == BarExit) {
                     SendMessage(hwnd, WM_DESTROY, wParam, lParam);
                     ExitMod = true;
+                    exit(0);
                 }
                 if (BarExitCode == 0)
                     PostMessage(hwnd, WM_LBUTTONDOWN, NULL, NULL);
@@ -196,8 +197,9 @@ void GetTargetWindowInfo() {
         TargetWindowAddress = FindWindow(TargetClassName, TargetWindowName);
     if (::GetWindowRect(GetConsoleWindow(), &ProgramWindowInfoData))
         if (ProgramWindowInfoData.left == -25600 || ProgramWindowInfoData.top == -25600) {
-            ::SetWindowPos(TargetWindowAddress, HWND_NOTOPMOST, 0, 0, ProgramWindowInfoData.right - ProgramWindowInfoData.left,
-                           ProgramWindowInfoData.bottom - ProgramWindowInfoData.top, SWP_SHOWWINDOW);
+            ::SetWindowPos(TargetWindowAddress, HWND_NOTOPMOST, (ScreenInfo.x - (ProgramWindowInfoData.right - ProgramWindowInfoData.left)) / 2,
+                           (ScreenInfo.y - (ProgramWindowInfoData.bottom - ProgramWindowInfoData.top)) / 2,
+                           ProgramWindowInfoData.right - ProgramWindowInfoData.left, ProgramWindowInfoData.bottom - ProgramWindowInfoData.top, SWP_SHOWWINDOW);
             SetProgramWindowShow(0);
         }
     if (TargetWindowAddress != nullptr) {
