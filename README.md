@@ -1,11 +1,13 @@
-# TargetWindowHider_v1.1.5
-## 这是一个让第三方软件实现类似于QQ的窗口停靠&隐藏效果小工具
+# TargetWindowHider_v1.1.8
+## 这是一个让第三方软件侧边停靠的小工具
 
 # 博客地址
 
 [**欢迎大家来看我的博客~**](https://blog.doublecat.cn/post/TargetWindowHider/)
 
 # 更新
+
+2022.7.31 更新v1.1.8 (Code + releases)
 
 2022.7.28 更新v1.1.6 (Code + releases)
 
@@ -34,7 +36,7 @@
 5. 在停靠时，若鼠标离开目标窗口，则会自动隐藏目标窗口直到唤出
 6. 拖动文件/文本等时可以唤出目标窗口
 7. 点击右下角托盘即可显示/隐藏程序窗口，右键即可唤出菜单
-# 下载链接(v1.1.6)
+# 下载链接(v1.1.8)
 
 [Github releases](https://github.com/DoubleBobCat/TargetWindowHider/releases)
 
@@ -45,11 +47,15 @@
 # 后续计划
 
 1. 增加动画
-3. 增加多显示器支持
-3. 增加GUI
+3. ~~ 增加多显示器支持 ~~
+3. ~~ 增加GUI ~~
 
 # 更新日志
 
+- v1.1.8
+  1. 修复了部分bug
+  2. 带来了一些bug
+  3. 优化了代码逻辑
 - v1.1.6
   1. 修复了部分bug
 - v1.1.5
