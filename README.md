@@ -5,6 +5,8 @@
 
 [**欢迎大家来看我的博客~**](https://blog.doublecat.cn/post/TargetWindowHider/)
 
+# 正在New分支中进行重构
+
 # 更新
 
 2022.7.31 更新v1.1.8 (Code + releases)
