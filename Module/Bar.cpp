@@ -106,3 +106,45 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) 
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
+
+//创建Bar
+void TrayBar() {
+    HWND hwnd;
+    MSG msg;
+    WNDCLASS wndclass;
+    HWND handle = FindWindow(nullptr, WindowName);
+    if (handle != nullptr) {
+        MessageBox(nullptr, TEXT("Application is already running"), ClassName, MB_ICONERROR);
+        exit(555);
+    }
+    wndclass.style = CS_HREDRAW | CS_VREDRAW;
+    wndclass.lpfnWndProc = WndProc;
+    wndclass.cbClsExtra = 0;
+    wndclass.cbWndExtra = 0;
+    wndclass.hInstance = nullptr;
+    wndclass.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
+    wndclass.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wndclass.hbrBackground = (HBRUSH) GetStockObject(WHITE_BRUSH);
+    wndclass.lpszMenuName = nullptr;
+    wndclass.lpszClassName = ClassName;
+
+    if (!RegisterClass(&wndclass)) {
+        MessageBox(nullptr, TEXT("This program requires Windows NT!"), ClassName, MB_ICONERROR);
+        exit(2008);
+    }
+    hwnd = CreateWindowEx(WS_EX_TOOLWINDOW,
+                          ClassName, WindowName,
+                          WS_POPUP,
+                          CW_USEDEFAULT,
+                          CW_USEDEFAULT,
+                          CW_USEDEFAULT,
+                          CW_USEDEFAULT,
+                          nullptr, nullptr, nullptr, nullptr);
+
+    ShowWindow(hwnd, 0);
+    UpdateWindow(hwnd);
+    while (GetMessage(&msg, nullptr, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
